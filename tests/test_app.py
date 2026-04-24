@@ -123,8 +123,8 @@ class TestSignup:
         assert response.status_code == 404
         assert "detail" in response.json()
 
-    def test_signup_allows_duplicate_email(self, client):
-        """Test that the same email can be added twice (current behavior)"""
+    def test_signup_prevents_duplicate_email(self, client):
+        """Test that duplicate signups are prevented with 400 error"""
         activity_name = "Gym Class"
         email = "duplicate@mergington.edu"
         
@@ -135,18 +135,19 @@ class TestSignup:
         )
         assert response1.status_code == 200
         
-        # Second signup with same email
+        # Second signup with same email should fail
         response2 = client.post(
             f"/activities/{activity_name}/signup",
             params={"email": email}
         )
-        assert response2.status_code == 200
+        assert response2.status_code == 400
+        assert "already signed up" in response2.json()["detail"]
         
-        # Verify both emails are in participants list (duplicate exists)
+        # Verify email only appears once in participants list
         response_get = client.get("/activities")
         participants = response_get.json()[activity_name]["participants"]
         email_count = participants.count(email)
-        assert email_count == 2  # Email appears twice
+        assert email_count == 1  # Email appears only once
 
     def test_signup_email_parameter_required(self, client):
         """Test that signup requires email parameter"""
